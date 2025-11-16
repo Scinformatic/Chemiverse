@@ -17,6 +17,8 @@ class MolecularFormula:
     atom_count
         Molecular formula as a dictionary
         mapping atomic numbers or symbols to their counts.
+    charge
+        The overall charge of the molecule.
     """
 
     def __init__(
@@ -41,16 +43,8 @@ class MolecularFormula:
         return
 
     @property
-    def latex(self) -> str:
-        """Molecular formula formatted for LaTeX.
-
-        The elements are sorted following the standard IUPAC convention:
-        - If carbon is present, it is listed first, followed by hydrogen,
-          and then the other elements in alphabetical order.
-        - Otherwise, from least to most electronegative element.
-
-        The formula also includes the charge of the system as a superscript.
-        """
+    def str_latex(self) -> str:
+        """Molecular formula as a LaTeX string."""
         parts = []
         for symbol, count in self._symbol_to_count.items():
             if count == 1:
@@ -62,6 +56,34 @@ class MolecularFormula:
             abs_charge = abs(charge)
             charge_str = abs_charge if abs_charge != 1 else ""
             parts.append(rf"\textsuperscript{{{charge_str}{"+" if charge > 0 else "–"}}}")
+        return "".join(parts)
+
+    def str_plain(self, charge_sep: str | None = None) -> str:
+        """Molecular formula as a plain text string.
+
+        Parameters
+        ----------
+        charge_sep
+            Separator to use before the charge.
+            If None, the charge is appended directly to the formula
+            as `{sign}{magnitude}`, e.g. "+2", "+", "–", "–1", etc.
+            If a string is provided, the charge is appended after the separator
+            as `{sep}{magnitude}{sign}`, e.g. " 2+", " +", " –", " 1–", etc.
+        """
+        parts = []
+        for symbol, count in self._symbol_to_count.items():
+            parts.append(symbol)
+            if count != 1:
+                parts.append(f"{count}")
+        charge = self._charge
+        if charge != 0:
+            abs_charge = abs(charge)
+            sign = "+" if charge > 0 else "–"
+            charge_str = abs_charge if abs_charge != 1 else ""
+            if charge_sep is None:
+                parts.extend([sign, charge_str])
+            else:
+                parts.extend([charge_sep, charge_str, sign])
         return "".join(parts)
 
     def sort(self, method: Literal["iupac"]) -> Self:
@@ -95,6 +117,21 @@ class MolecularFormula:
         formula = {symbol: counts[symbol] for symbol in sorted_elements}
         return MolecularFormula(formula, charge=self._charge)
 
+    def with_charge(self, charge: int) -> Self:
+        """Return a copy of the molecular formula with the specified charge.
+
+        Parameters
+        ----------
+        charge
+            The overall charge of the molecule.
+        """
+        return MolecularFormula(
+            self._symbol_to_count.copy(),
+            charge=charge,
+        )
+
+    def __str__(self) -> str:
+        return self.str_plain()
 
 def from_counts(
     counts: dict[str | int, int],
